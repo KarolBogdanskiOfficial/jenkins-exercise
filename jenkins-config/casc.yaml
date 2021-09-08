@@ -1,0 +1,63 @@
+jenkins:
+  systemMessage: "Controlled by Configuration as Code by przemo1337"
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+       - id: ${JENKINS_ADMIN_ID}
+         password: ${JENKINS_ADMIN_PASSWORD}
+  authorizationStrategy:
+    globalMatrix:
+      permissions:
+        - "Overall/Administer:admin"
+        - "Overall/Read:authenticated"
+  remotingSecurity:
+    enabled: true
+
+  clouds:
+    - docker:
+        name: "docker"
+        dockerApi:
+          dockerHost:
+            uri: "tcp://host.docker.internal:2377"
+        templates:
+          - labelString: "node-agent"
+            dockerTemplateBase:
+              image: "kbogdanski/npm-agent"
+            remoteFs: "/home/jenkins/agent"
+            connector:
+              attach:
+                user: "jenkins"
+            instanceCapStr: "10"
+            retentionStrategy:
+              idleMinutes: 1
+
+security:
+  queueItemAuthenticator:
+    authenticators:
+    - global:
+        strategy: triggeringUsersAuthorizationStrategy
+
+
+
+jobs:
+  - script: |
+      multibranchPipelineJob('seed-test') {
+          branchSources {
+              git {
+                  id = 'seed-test'
+                  remote('https://github.com/karolbogdanski/jenkins-exercise/tree/upgrades')
+              }
+          }
+      }
+
+  - file: "/usr/local/jobs/pipeline.groovy"
+
+unclassified:
+  location:
+    url: "http://server_ip:8080/"
+  mailer:
+    replyToAddress: karol.bogdanski3@gmail.com
+    smtpHost: smtp.gmail.com
+
